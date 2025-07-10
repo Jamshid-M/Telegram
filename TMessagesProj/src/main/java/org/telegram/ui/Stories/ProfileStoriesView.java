@@ -489,7 +489,7 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
         float avatarPullProgress = Utilities.clamp((avatarContainer.getScaleX() - 1f) / 0.4f, 1f, 0f);
         float insetMain = AndroidUtilities.lerp(AndroidUtilities.dpf2(4f), AndroidUtilities.dpf2(3.5f), avatarPullProgress);
         insetMain *= progressToInsets;
-        float ax = avatarContainer.getX() + insetMain * avatarContainer.getScaleX();
+        float ax = avatarContainer.getX() - (avatarContainer.getWidth() * (avatarContainer.getScaleX() - 1f) / 2f) + insetMain * avatarContainer.getScaleX();
         float ay = avatarContainer.getY() + insetMain * avatarContainer.getScaleY();
         float aw = (avatarContainer.getWidth() - insetMain * 2) * avatarContainer.getScaleX();
         float ah = (avatarContainer.getHeight() - insetMain * 2) * avatarContainer.getScaleY();
@@ -639,7 +639,8 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
                         canvas.save();
                         canvas.scale(bounceScale, bounceScale, rect2.centerX(), rect2.centerY());
                     }
-
+                    //400 800
+                    //500 700
                     if (read < 1) {
                         unreadPaint = gradientTools.getPaint(rect2);
                         unreadPaint.setAlpha((int) (0xFF * (1f - read) * segmentsAlpha));
@@ -662,102 +663,102 @@ public class ProfileStoriesView extends View implements NotificationCenter.Notif
             }
         }
 
-        final float expandRight = getExpandRight();
-        if (expandProgress > 0 && segmentsAlpha < 1) {
-            float ix = 0;
-            w = 0;
-            for (int i = 0; i < circles.size(); ++i) {
-                StoryCircle circle = circles.get(i);
-                float scale = circle.cachedScale;
-                w += dp(14) * scale;
-            }
-            for (int i = 0; i < circles.size(); ++i) {
-                StoryCircle circle = circles.get(i);
-
-                float scale = circle.cachedScale;
-                float read = circle.cachedRead;
-
-                float r = dp(28) / 2f * scale;
-//                float cx = left + r + ix;
-                float cx = expandRight - w + r + ix;
-                ix += dp(18) * scale;
-
-                maxX = Math.max(maxX, cx + r);
-
-                rect2.set(cx - r, cy - r, cx + r, cy + r);
-                lerpCentered(rect1, rect2, expandProgress, rect3);
-
-                circle.cachedRect.set(rect3);
-                circle.borderRect.set(rect3);
-                final float inset = lerp(dpf2(2.66f), lerp(dpf2(1.33f), dpf2(2.33f), expandProgress), read * expandProgress);
-                circle.borderRect.inset(-inset * scale, -inset * scale);
-            }
-            readPaint.setColor(ColorUtils.blendARGB(0x5affffff, 0x80BBC4CC, expandProgress));
-            readPaintAlpha = readPaint.getAlpha();
-            unreadPaint = gradientTools.getPaint(rect2);
-            unreadPaint.setStrokeWidth(lerp(dpf2(2.33f), dpf2(1.5f), expandProgress));
-            readPaint.setStrokeWidth(lerp(dpf2(1.125f), dpf2(1.5f), expandProgress));
-            if (expandProgress > 0) {
-                for (int i = 0; i < circles.size(); ++i) {
-                    StoryCircle circle = circles.get(i);
-                    int wasAlpha = whitePaint.getAlpha();
-                    whitePaint.setAlpha((int) (wasAlpha * expandProgress));
-                    canvas.drawCircle(
-                            circle.cachedRect.centerX(),
-                            circle.cachedRect.centerY(),
-                            Math.min(circle.cachedRect.width(), circle.cachedRect.height()) / 2f +
-                                    lerp(
-                                            dpf2(2.66f) + unreadPaint.getStrokeWidth() / 2f,
-                                            dpf2(2.33f) - readPaint.getStrokeWidth() / 2f,
-                                            circle.cachedRead
-                                    ) * expandProgress,
-                            whitePaint
-                    );
-                    whitePaint.setAlpha(wasAlpha);
-                }
-            }
-            for (int i = 0; i < circles.size(); ++i) {
-                StoryCircle B = circles.get(i);
-                StoryCircle A = nearest(i - 2 >= 0 ? circles.get(i - 2) : null, i - 1 >= 0 ? circles.get(i - 1) : null, B);
-                StoryCircle C = nearest(i + 1 < circles.size() ? circles.get(i + 1) : null, i + 2 < circles.size() ? circles.get(i + 2) : null, B);
-
-                if (A != null && (
-                        Math.abs(A.borderRect.centerX() - B.borderRect.centerX()) < Math.abs(B.borderRect.width() / 2f - A.borderRect.width() / 2f) ||
-                                Math.abs(A.borderRect.centerX() - B.borderRect.centerX()) > A.borderRect.width() / 2f + B.borderRect.width() / 2f
-                )) {
-                    A = null;
-                }
-                if (C != null && (
-                        Math.abs(C.borderRect.centerX() - B.borderRect.centerX()) < Math.abs(B.borderRect.width() / 2f - C.borderRect.width() / 2f) ||
-                                Math.abs(C.borderRect.centerX() - B.borderRect.centerX()) > C.borderRect.width() / 2f + B.borderRect.width() / 2f
-                )) {
-                    C = null;
-                }
-
-                if (B.cachedRead < 1) {
-                    unreadPaint.setAlpha((int) (0xFF * B.cachedScale * (1f - B.cachedRead) * (1f - segmentsAlpha)));
-                    drawArcs(canvas, A, B, C, unreadPaint);
-                }
-                if (B.cachedRead > 0) {
-                    readPaint.setAlpha((int) (readPaintAlpha * B.cachedScale * B.cachedRead * (1f - segmentsAlpha)));
-                    drawArcs(canvas, A, B, C, readPaint);
-                }
-            }
-            canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), (int) (0xFF * expandProgress * (1f - segmentsAlpha)), Canvas.ALL_SAVE_FLAG);
-            for (int i = circles.size() - 1; i >= 0; i--) {
-                StoryCircle circle = circles.get(i);
-                if (!circle.imageReceiver.getVisible()) {
-                    continue;
-                }
-                int r = canvas.getSaveCount();
-                final StoryCircle nextCircle = nearest(i - 1 >= 0 ? circles.get(i - 1) : null, i - 2 >= 0 ? circles.get(i - 2) : null, circle);
-                clipCircle(canvas, circle, nextCircle);
-                circle.imageReceiver.setImageCoords(circle.cachedRect);
-                circle.imageReceiver.draw(canvas);
-                canvas.restoreToCount(r);
-            }
-            canvas.restore();
-        }
+//        final float expandRight = getExpandRight();
+//        if (expandProgress > 0 && segmentsAlpha < 1) {
+//            float ix = 0;
+//            w = 0;
+//            for (int i = 0; i < circles.size(); ++i) {
+//                StoryCircle circle = circles.get(i);
+//                float scale = circle.cachedScale;
+//                w += dp(14) * scale;
+//            }
+//            for (int i = 0; i < circles.size(); ++i) {
+//                StoryCircle circle = circles.get(i);
+//
+//                float scale = circle.cachedScale;
+//                float read = circle.cachedRead;
+//
+//                float r = dp(28) / 2f * scale;
+////                float cx = left + r + ix;
+//                float cx = expandRight - w + r + ix;
+//                ix += dp(18) * scale;
+//
+//                maxX = Math.max(maxX, cx + r);
+//
+//                rect2.set(cx - r, cy - r, cx + r, cy + r);
+//                lerpCentered(rect1, rect2, expandProgress, rect3);
+//
+//                circle.cachedRect.set(rect3);
+//                circle.borderRect.set(rect3);
+//                final float inset = lerp(dpf2(2.66f), lerp(dpf2(1.33f), dpf2(2.33f), expandProgress), read * expandProgress);
+//                circle.borderRect.inset(-inset * scale, -inset * scale);
+//            }
+//            readPaint.setColor(ColorUtils.blendARGB(0x5affffff, 0x80BBC4CC, expandProgress));
+//            readPaintAlpha = readPaint.getAlpha();
+//            unreadPaint = gradientTools.getPaint(rect2);
+//            unreadPaint.setStrokeWidth(lerp(dpf2(2.33f), dpf2(1.5f), expandProgress));
+//            readPaint.setStrokeWidth(lerp(dpf2(1.125f), dpf2(1.5f), expandProgress));
+//            if (expandProgress > 0) {
+//                for (int i = 0; i < circles.size(); ++i) {
+//                    StoryCircle circle = circles.get(i);
+//                    int wasAlpha = whitePaint.getAlpha();
+//                    whitePaint.setAlpha((int) (wasAlpha * expandProgress));
+//                    canvas.drawCircle(
+//                            circle.cachedRect.centerX(),
+//                            circle.cachedRect.centerY(),
+//                            Math.min(circle.cachedRect.width(), circle.cachedRect.height()) / 2f +
+//                                    lerp(
+//                                            dpf2(2.66f) + unreadPaint.getStrokeWidth() / 2f,
+//                                            dpf2(2.33f) - readPaint.getStrokeWidth() / 2f,
+//                                            circle.cachedRead
+//                                    ) * expandProgress,
+//                            whitePaint
+//                    );
+//                    whitePaint.setAlpha(wasAlpha);
+//                }
+//            }
+//            for (int i = 0; i < circles.size(); ++i) {
+//                StoryCircle B = circles.get(i);
+//                StoryCircle A = nearest(i - 2 >= 0 ? circles.get(i - 2) : null, i - 1 >= 0 ? circles.get(i - 1) : null, B);
+//                StoryCircle C = nearest(i + 1 < circles.size() ? circles.get(i + 1) : null, i + 2 < circles.size() ? circles.get(i + 2) : null, B);
+//
+//                if (A != null && (
+//                        Math.abs(A.borderRect.centerX() - B.borderRect.centerX()) < Math.abs(B.borderRect.width() / 2f - A.borderRect.width() / 2f) ||
+//                                Math.abs(A.borderRect.centerX() - B.borderRect.centerX()) > A.borderRect.width() / 2f + B.borderRect.width() / 2f
+//                )) {
+//                    A = null;
+//                }
+//                if (C != null && (
+//                        Math.abs(C.borderRect.centerX() - B.borderRect.centerX()) < Math.abs(B.borderRect.width() / 2f - C.borderRect.width() / 2f) ||
+//                                Math.abs(C.borderRect.centerX() - B.borderRect.centerX()) > C.borderRect.width() / 2f + B.borderRect.width() / 2f
+//                )) {
+//                    C = null;
+//                }
+//
+//                if (B.cachedRead < 1) {
+//                    unreadPaint.setAlpha((int) (0xFF * B.cachedScale * (1f - B.cachedRead) * (1f - segmentsAlpha)));
+//                    drawArcs(canvas, A, B, C, unreadPaint);
+//                }
+//                if (B.cachedRead > 0) {
+//                    readPaint.setAlpha((int) (readPaintAlpha * B.cachedScale * B.cachedRead * (1f - segmentsAlpha)));
+//                    drawArcs(canvas, A, B, C, readPaint);
+//                }
+//            }
+//            canvas.saveLayerAlpha(0, 0, getWidth(), getHeight(), (int) (0xFF * expandProgress * (1f - segmentsAlpha)), Canvas.ALL_SAVE_FLAG);
+//            for (int i = circles.size() - 1; i >= 0; i--) {
+//                StoryCircle circle = circles.get(i);
+//                if (!circle.imageReceiver.getVisible()) {
+//                    continue;
+//                }
+//                int r = canvas.getSaveCount();
+//                final StoryCircle nextCircle = nearest(i - 1 >= 0 ? circles.get(i - 1) : null, i - 2 >= 0 ? circles.get(i - 2) : null, circle);
+//                clipCircle(canvas, circle, nextCircle);
+//                circle.imageReceiver.setImageCoords(circle.cachedRect);
+//                circle.imageReceiver.draw(canvas);
+//                canvas.restoreToCount(r);
+//            }
+//            canvas.restore();
+//        }
 
         if (unreadPaint != null) {
             unreadPaint.setStrokeWidth(dpf2(2.3f));
